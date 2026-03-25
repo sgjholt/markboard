@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "MarkBoard Dev Server",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["serve", ".", "-l", "3123", "--no-clipboard"],
+      "port": 3123
+    }
+  ]
+}
