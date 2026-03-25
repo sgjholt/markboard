@@ -4,6 +4,10 @@ A plain-text project tracker powered by Markdown. Your board data lives in a `.m
 
 No server. No database. No accounts. One HTML file + one Markdown file.
 
+![Board view — dark theme](screenshots/board-dark.png)
+
+![Board view — light theme](screenshots/board-light.png)
+
 ---
 
 ## Quick start

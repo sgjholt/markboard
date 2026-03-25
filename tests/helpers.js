@@ -22,6 +22,7 @@ const sandbox = {
     }),
     documentElement: { setAttribute: () => {} },
     querySelectorAll: () => [],
+    addEventListener: () => {},
   },
   localStorage: { getItem: () => null, setItem: () => {} },
   setTimeout: () => {},
