@@ -37,7 +37,7 @@ E2E tests (`tests/e2e/board.spec.js`) use Playwright with Chromium. They inject 
 ## Architecture
 
 The entire application lives in `index.html`:
-- **Lines 7–202**: CSS — 4 themes (`dark`, `light`, `ocean`, `amber`) defined via CSS custom properties on `:root` and `[data-theme="..."]` selectors. Theme is persisted to `localStorage` under key `mb-theme`.
+- **Lines 7–202**: CSS — 4 built-in themes (`dark`, `light`, `ocean`, `amber`) defined via CSS custom properties on `:root` and `[data-theme="..."]` selectors. Theme is persisted to `localStorage` under key `mb-theme`. A fifth `custom` theme can be loaded at runtime via the CSS plugin system (see Key Functions below).
 - **Lines 203–265**: HTML structure — `#tab-bar`, `#connect-screen`, `#board` (phases, stats, progress bar, notes), `#toast`.
 - **Lines 267–675**: Vanilla JS — no frameworks, no imports.
 
@@ -62,6 +62,9 @@ DRAG / DRAG_OVER                               // drag-and-drop transient state
 | `saveBoard(idx?)` | Writes `serialiseMD(data)` back to the file via the File System Access API |
 | `cycleFeature(pi, fi)` | Cycles a feature's status (`pending → active → done → pending`), auto-derives phase status, then saves |
 | `setTheme(t)` | Applies `data-theme` attribute and persists to `localStorage` |
+| `pickCustomTheme()` | File picker for a `.css` plugin → `loadCustomTheme` |
+| `loadCustomTheme(css)` | Injects CSS into `<style id="mb-custom-theme">`, saves to `localStorage`, activates `custom` theme |
+| `clearCustomTheme()` | Removes injected CSS, clears `localStorage`, resets to dark |
 
 Auto-save triggers on every status change and after a 1 s debounce on notes input.
 

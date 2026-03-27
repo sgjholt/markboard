@@ -22,7 +22,7 @@ npm run test:all    # Both
 
 ## Making changes
 
-- **CSS**: Lines 7–200 of `index.html`. Themes use CSS custom properties — update all four theme blocks if adding a new variable.
+- **CSS**: Lines 7–200 of `index.html`. The four built-in themes use CSS custom properties — update all four theme blocks if adding a new variable. Custom user themes are loaded at runtime via `loadCustomTheme()` and stored in `localStorage`; see the **Custom themes** section in the README.
 - **HTML**: Lines 203–265. Keep it minimal.
 - **JS**: Lines 267–675. No imports, no modules — everything is in the global scope.
 

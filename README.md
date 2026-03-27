@@ -81,10 +81,40 @@ The `<!-- meta: key=value ... -->` comment is optional. Recognised keys:
 - **Click to cycle** — click any feature to cycle pending → active → done
 - **Drag to reorder** — drag features within a phase, or drag phases to reorder
 - **Due dates** — colour-coded overdue/soon/future badges
-- **4 themes** — Dark, Light, Ocean, Amber (remembered across sessions)
+- **5 themes** — Dark, Light, Ocean, Amber, plus **custom CSS plugin** (load any `.css` file)
 - **Auto-save** — every status change writes back to the `.md` file immediately
 - **Notes field** — free-text area saved to the `## Notes` section
 - **Zero dependencies** — single HTML file, works offline
+
+---
+
+## Custom themes
+
+Click **+ CSS** in the theme bar and pick any `.css` file. The file is injected as a stylesheet and remembered across sessions — no re-picking needed on reload.
+
+The plugin format is a single CSS block targeting `[data-theme="custom"]`:
+
+```css
+/* my-theme.css */
+[data-theme="custom"] {
+  --bg:          #1e1e2e;
+  --surface:     #181825;
+  --surface2:    #313244;
+  --border:      #45475a;
+  --accent:      #a6e3a1;
+  --accent-dim:  #1e3a2e;
+  --accent2:     #fab387;
+  --accent2-dim: #3d2010;
+  --blue:        #89b4fa;
+  --red:         #f38ba8;
+  --muted:       #6c7086;
+  --text:        #cdd6f4;
+  --text-dim:    #a6adc8;
+  --radius:      10px;
+}
+```
+
+Any omitted variables fall back to the dark theme. You can also include arbitrary CSS rules to customise individual components. To reset, call `clearCustomTheme()` in the browser console.
 
 ---
 
