@@ -22,7 +22,7 @@ test.describe("MarkBoard", () => {
 
   test("theme buttons switch themes", async ({ page }) => {
     const themeButtons = page.locator(".theme-btn");
-    await expect(themeButtons).toHaveCount(4);
+    await expect(themeButtons).toHaveCount(6); // 4 built-in + Custom (hidden) + + CSS
 
     await page.locator('.theme-btn[data-theme="light"]').click();
     await expect(page.locator("html")).toHaveAttribute("data-theme", "light");

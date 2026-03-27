@@ -31,6 +31,8 @@
   --text: #fef3c7; --text-dim: #d97706;
 }
 
+.theme-btn-custom { border-style: dashed; }
+
 /* ── Reset & base ───────────────────────────────────────────────────────── */
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
@@ -228,6 +230,8 @@ footer a { color: var(--blue); text-decoration: none; }
     <button class="theme-btn"        data-theme="light" onclick="setTheme('light')">Light</button>
     <button class="theme-btn"        data-theme="ocean" onclick="setTheme('ocean')">Ocean</button>
     <button class="theme-btn"        data-theme="amber" onclick="setTheme('amber')">Amber</button>
+    <button class="theme-btn theme-btn-custom" id="custom-theme-btn" data-theme="custom" onclick="setTheme('custom')" style="display:none">Custom</button>
+    <button class="theme-btn" id="load-css-btn" onclick="pickCustomTheme()" title="Load a .css theme file">+ CSS</button>
   </div>
 </div>
 
@@ -724,6 +728,44 @@ function setTheme(t) {
   localStorage.setItem("mb-theme", t);
 }
 
+// ── Custom theme plugin ────────────────────────────────────────────────────
+function injectCustomCSS(cssText) {
+  let el = document.getElementById("mb-custom-theme");
+  if (!el) { el = document.createElement("style"); el.id = "mb-custom-theme"; document.head.appendChild(el); }
+  el.textContent = cssText;
+}
+
+function syncCustomBtn() {
+  const btn = document.getElementById("custom-theme-btn");
+  if (btn) btn.style.display = localStorage.getItem("mb-custom-css") ? "" : "none";
+}
+
+function loadCustomTheme(cssText) {
+  injectCustomCSS(cssText);
+  localStorage.setItem("mb-custom-css", cssText);
+  setTheme("custom");
+  syncCustomBtn();
+}
+
+async function pickCustomTheme() {
+  try {
+    const [fh] = await window.showOpenFilePicker({ types: [{ description: "CSS Theme", accept: { "text/css": [".css"] } }] });
+    const file = await fh.getFile();
+    const text = await file.text();
+    loadCustomTheme(text);
+    toast("Custom theme loaded · " + fh.name);
+  } catch(e) { if (e.name !== "AbortError") toast("Error: " + e.message); }
+}
+
+function clearCustomTheme() {
+  const el = document.getElementById("mb-custom-theme");
+  if (el) el.remove();
+  localStorage.removeItem("mb-custom-css");
+  setTheme("dark");
+  syncCustomBtn();
+  toast("Custom theme cleared");
+}
+
 // ── Utilities ──────────────────────────────────────────────────────────────
 function esc(s) { return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
 
@@ -741,8 +783,11 @@ document.getElementById("notes").addEventListener("input", () => {
 });
 
 // ── Init ───────────────────────────────────────────────────────────────────
+const savedCSS = localStorage.getItem("mb-custom-css");
+if (savedCSS) injectCustomCSS(savedCSS);
 const savedTheme = localStorage.getItem("mb-theme") || "dark";
 setTheme(savedTheme);
+syncCustomBtn();
 
 document.addEventListener("click", (e) => {
   if (!e.target.closest("#tab-add")) closeTabMenu();
@@ -751,6 +796,7 @@ document.addEventListener("click", (e) => {
 if (!window.showOpenFilePicker) {
   document.getElementById("open-btn").disabled = true;
   document.getElementById("new-btn").disabled = true;
+  document.getElementById("load-css-btn").style.display = "none";
   document.getElementById("api-hint").textContent = "⚠ Requires Chrome or Edge 86+ (File System Access API)";
   document.getElementById("api-hint").style.color = "var(--red)";
 }
