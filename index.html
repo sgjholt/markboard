@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MarkBoard</title>
+<link id="mb-favicon" rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231a1d27'/%3E%3Crect x='6' y='7' width='20' height='3' rx='1.5' fill='%234ade80'/%3E%3Crect x='6' y='13' width='14' height='3' rx='1.5' fill='%234ade80'/%3E%3Crect x='6' y='19' width='17' height='3' rx='1.5' fill='%236b7280'/%3E%3Crect x='6' y='25' width='11' height='3' rx='1.5' fill='%236b7280'/%3E%3C/svg%3E">
 <style>
 /* ── Themes ─────────────────────────────────────────────────────────────── */
 :root {
@@ -231,7 +232,9 @@ footer a { color: var(--blue); text-decoration: none; }
     <button class="theme-btn"        data-theme="ocean" onclick="setTheme('ocean')">Ocean</button>
     <button class="theme-btn"        data-theme="amber" onclick="setTheme('amber')">Amber</button>
     <button class="theme-btn theme-btn-custom" id="custom-theme-btn" data-theme="custom" onclick="setTheme('custom')" style="display:none">Custom</button>
-    <button class="theme-btn" id="load-css-btn" onclick="pickCustomTheme()" title="Load a .css theme file">+ CSS</button>
+    <button class="theme-btn" id="load-plugins-btn" onclick="connectPluginsFolder()" title="Connect a plugins folder (favicon.svg, theme.css)">+ Plugins</button>
+    <button class="theme-btn" id="load-css-btn" onclick="pickCustomTheme()" title="Override theme: load a .css file">+ CSS</button>
+    <button class="theme-btn" id="load-favicon-btn" onclick="pickFavicon()" title="Override favicon: load an image file">+ Icon</button>
   </div>
 </div>
 
@@ -766,6 +769,74 @@ function clearCustomTheme() {
   toast("Custom theme cleared");
 }
 
+// ── Plugin folder ─────────────────────────────────────────────────────────
+async function connectPluginsFolder() {
+  try {
+    const dir = await window.showDirectoryPicker({ mode: "read" });
+    const loaded = [];
+
+    // favicon: try svg → png → ico → jpg in order
+    for (const name of ["favicon.svg", "favicon.png", "favicon.ico", "favicon.jpg", "favicon.jpeg"]) {
+      try {
+        const fh = await dir.getFileHandle(name);
+        const file = await fh.getFile();
+        await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            setFavicon(e.target.result);
+            localStorage.setItem("mb-favicon", e.target.result);
+            resolve();
+          };
+          reader.readAsDataURL(file);
+        });
+        loaded.push(name);
+        break;
+      } catch(_) { /* not present */ }
+    }
+
+    // theme.css
+    try {
+      const fh = await dir.getFileHandle("theme.css");
+      const file = await fh.getFile();
+      const text = await file.text();
+      loadCustomTheme(text);
+      loaded.push("theme.css");
+    } catch(_) { /* not present */ }
+
+    toast(loaded.length ? "Plugins loaded: " + loaded.join(", ") : "No plugins found (favicon.svg, theme.css)");
+  } catch(e) { if (e.name !== "AbortError") toast("Error: " + e.message); }
+}
+
+// ── Favicon ────────────────────────────────────────────────────────────────
+const DEFAULT_FAVICON = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231a1d27'/%3E%3Crect x='6' y='7' width='20' height='3' rx='1.5' fill='%234ade80'/%3E%3Crect x='6' y='13' width='14' height='3' rx='1.5' fill='%234ade80'/%3E%3Crect x='6' y='19' width='17' height='3' rx='1.5' fill='%236b7280'/%3E%3Crect x='6' y='25' width='11' height='3' rx='1.5' fill='%236b7280'/%3E%3C/svg%3E";
+
+function setFavicon(url) {
+  document.getElementById("mb-favicon").href = url;
+}
+
+async function pickFavicon() {
+  try {
+    const [fh] = await window.showOpenFilePicker({
+      types: [{ description: "Image", accept: { "image/*": [".png", ".svg", ".ico", ".jpg", ".jpeg", ".webp", ".gif"] } }]
+    });
+    const file = await fh.getFile();
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const url = e.target.result;
+      setFavicon(url);
+      localStorage.setItem("mb-favicon", url);
+      toast("Favicon set · " + fh.name);
+    };
+    reader.readAsDataURL(file);
+  } catch(e) { if (e.name !== "AbortError") toast("Error: " + e.message); }
+}
+
+function clearFavicon() {
+  setFavicon(DEFAULT_FAVICON);
+  localStorage.removeItem("mb-favicon");
+  toast("Favicon reset to default");
+}
+
 // ── Utilities ──────────────────────────────────────────────────────────────
 function esc(s) { return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
 
@@ -788,6 +859,8 @@ if (savedCSS) injectCustomCSS(savedCSS);
 const savedTheme = localStorage.getItem("mb-theme") || "dark";
 setTheme(savedTheme);
 syncCustomBtn();
+const savedFavicon = localStorage.getItem("mb-favicon");
+if (savedFavicon) setFavicon(savedFavicon);
 
 document.addEventListener("click", (e) => {
   if (!e.target.closest("#tab-add")) closeTabMenu();
@@ -796,7 +869,9 @@ document.addEventListener("click", (e) => {
 if (!window.showOpenFilePicker) {
   document.getElementById("open-btn").disabled = true;
   document.getElementById("new-btn").disabled = true;
+  document.getElementById("load-plugins-btn").style.display = "none";
   document.getElementById("load-css-btn").style.display = "none";
+  document.getElementById("load-favicon-btn").style.display = "none";
   document.getElementById("api-hint").textContent = "⚠ Requires Chrome or Edge 86+ (File System Access API)";
   document.getElementById("api-hint").style.color = "var(--red)";
 }
