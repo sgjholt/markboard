@@ -175,6 +175,12 @@ board.md
 
 ---
 
+## AI usage disclosure
+
+Parts of this project were developed with the assistance of AI coding tools (Claude by Anthropic). All AI-generated code has been reviewed, tested, and is the responsibility of the project maintainers.
+
+---
+
 ## License
 
 MIT — see [LICENSE](LICENSE)
