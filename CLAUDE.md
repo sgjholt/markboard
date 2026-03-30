@@ -37,17 +37,20 @@ E2E tests (`tests/e2e/board.spec.js`) use Playwright with Chromium. They inject 
 ## Architecture
 
 The entire application lives in `index.html`:
-- **Lines 7–202**: CSS — 4 built-in themes (`dark`, `light`, `ocean`, `amber`) defined via CSS custom properties on `:root` and `[data-theme="..."]` selectors. Theme is persisted to `localStorage` under key `mb-theme`. A fifth `custom` theme can be loaded at runtime via the CSS plugin system (see Key Functions below).
-- **Lines 203–265**: HTML structure — `#tab-bar`, `#connect-screen`, `#board` (phases, stats, progress bar, notes), `#toast`.
-- **Lines 267–675**: Vanilla JS — no frameworks, no imports.
+- **Lines 8–232**: CSS — 4 built-in themes (`dark`, `light`, `ocean`, `amber`) defined via CSS custom properties on `:root` and `[data-theme="..."]` selectors. Theme is persisted to `localStorage` under key `mb-theme`. A fifth `custom` theme can be loaded at runtime via the CSS plugin system (see Key Functions below). Also includes styles for `#md-picker` (multi-file selection modal).
+- **Lines 234–313**: HTML structure — `#tab-bar`, `#tab-menu`, `#connect-screen`, `#board` (phases, stats, progress bar, notes), `#toast`, `#md-picker`.
+- **Lines 314–940**: Vanilla JS — no frameworks, no imports.
 
 ### State
 
 ```js
-BOARDS = [{name, fileHandle, data, unsaved}]  // all open boards
-ACTIVE = -1                                    // index into BOARDS
-DRAG / DRAG_OVER                               // drag-and-drop transient state
+BOARDS = [{name, fileHandle, dirHandle, data, unsaved, plugins}]  // all open boards
+ACTIVE = -1                                                        // index into BOARDS
+DRAG / DRAG_OVER                                                   // drag-and-drop transient state
 ```
+
+- `dirHandle` — `FileSystemDirectoryHandle` for the project folder; `null` for boards created via `newBoard()`.
+- `plugins` — `{ favicon: <dataURL|null>, css: <string|null> }` loaded from `.mbconfig/` at open time.
 
 `board()` and `data()` are convenience accessors for `BOARDS[ACTIVE]` and `BOARDS[ACTIVE].data`.
 
@@ -58,15 +61,35 @@ DRAG / DRAG_OVER                               // drag-and-drop transient state
 | `parseMD(text)` | Parses a `.md` string into a board data object |
 | `serialiseMD(d)` | Converts a board data object back to a `.md` string |
 | `render()` | Rebuilds the DOM from `data()` — called after every state change |
-| `openBoard()` | File picker → `parseMD` → push to `BOARDS` → `render` |
+| `openBoard()` | Directory picker → scan for `.md` files → `loadPluginsFromDir` → `parseMD` → push to `BOARDS` → `render` → `applyBoardPlugins` |
 | `saveBoard(idx?)` | Writes `serialiseMD(data)` back to the file via the File System Access API |
 | `cycleFeature(pi, fi)` | Cycles a feature's status (`pending → active → done → pending`), auto-derives phase status, then saves |
 | `setTheme(t)` | Applies `data-theme` attribute and persists to `localStorage` |
-| `pickCustomTheme()` | File picker for a `.css` plugin → `loadCustomTheme` |
+| `pickCustomTheme()` | File picker for a `.css` plugin → `loadCustomTheme` (global override) |
 | `loadCustomTheme(css)` | Injects CSS into `<style id="mb-custom-theme">`, saves to `localStorage`, activates `custom` theme |
 | `clearCustomTheme()` | Removes injected CSS, clears `localStorage`, resets to dark |
+| `loadPluginsFromDir(dirHandle)` | Reads `.mbconfig/favicon.*` and `.mbconfig/theme.css`; returns `{ favicon, css }` |
+| `applyBoardPlugins(b)` | Applies a board's `.mbconfig` plugins (or global `localStorage` values if none); called on tab switch and connect-screen restore |
+| `showMdPicker(mdFiles)` | Shows `#md-picker` modal when a directory contains multiple `.md` files; returns a Promise resolving to the chosen `FileSystemFileHandle` |
+| `setFavicon(url)` | Updates `<link id="mb-favicon">` href |
+| `pickFavicon()` | File picker for an image → `setFavicon` + `localStorage` (global override) |
+| `clearFavicon()` | Resets favicon to built-in SVG default, clears `localStorage` |
 
 Auto-save triggers on every status change and after a 1 s debounce on notes input.
+
+### Plugin system
+
+`.mbconfig/` is a subfolder the app looks for automatically when a project folder is opened:
+
+```
+project/
+  board.md
+  .mbconfig/
+    favicon.svg   (or .png / .ico / .jpg — first found wins)
+    theme.css
+```
+
+Plugins are scoped per board. `applyBoardPlugins(b)` is called on every tab switch; it falls back to global `localStorage` overrides (`mb-favicon`, `mb-custom-css`) when no `.mbconfig` values are present. The `+ CSS` and `+ Icon` tab-bar buttons set these global overrides.
 
 ### Markdown Format
 
