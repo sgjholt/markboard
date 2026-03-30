@@ -249,16 +249,16 @@ footer a { color: var(--blue); text-decoration: none; }
 
 <div id="tab-menu">
   <button class="tab-menu-item" onclick="newBoard()">Create new board</button>
-  <button class="tab-menu-item" onclick="openBoard()">Open existing (.md)</button>
+  <button class="tab-menu-item" onclick="openBoard()">Open project folder</button>
 </div>
 
 <div id="connect-screen">
   <div style="font-size:2.2rem;margin-bottom:4px">📋</div>
   <h2><span>Mark</span>Board</h2>
-  <p>A plain-text project tracker powered by Markdown. Your data lives in a <code style="background:var(--surface2);padding:1px 5px;border-radius:3px;font-size:0.9em">.md</code> file you own. Open it to get started.</p>
+  <p>A plain-text project tracker powered by Markdown. Your data lives in a <code style="background:var(--surface2);padding:1px 5px;border-radius:3px;font-size:0.9em">.md</code> file you own. Open the folder containing it to get started.</p>
   <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center">
     <button class="connect-btn" id="new-btn" onclick="newBoard()">Create new board</button>
-    <button class="connect-btn-secondary" id="open-btn" onclick="openBoard()">Open existing (.md)</button>
+    <button class="connect-btn-secondary" id="open-btn" onclick="openBoard()">Open project folder</button>
   </div>
   <div class="file-hint" id="api-hint">Chrome / Edge 86+ required · File System Access API · one click to connect per session</div>
 </div>
