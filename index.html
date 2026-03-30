@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MarkBoard</title>
+<link id="mb-favicon" rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231a1d27'/%3E%3Crect x='6' y='7' width='20' height='3' rx='1.5' fill='%234ade80'/%3E%3Crect x='6' y='13' width='14' height='3' rx='1.5' fill='%234ade80'/%3E%3Crect x='6' y='19' width='17' height='3' rx='1.5' fill='%236b7280'/%3E%3Crect x='6' y='25' width='11' height='3' rx='1.5' fill='%236b7280'/%3E%3C/svg%3E">
 <style>
 /* ── Themes ─────────────────────────────────────────────────────────────── */
 :root {
@@ -218,6 +219,16 @@ footer a { color: var(--blue); text-decoration: none; }
 /* ── Toast ──────────────────────────────────────────────────────────────── */
 #toast { position: fixed; bottom: 20px; right: 20px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 9px 14px; font-size: 0.78rem; color: var(--text); opacity: 0; pointer-events: none; transform: translateY(6px); transition: opacity 0.2s, transform 0.2s; z-index: 9999; }
 #toast.show { opacity: 1; transform: translateY(0); }
+
+/* ── .md file picker modal ───────────────────────────────────────────────── */
+#md-picker { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 1000; align-items: center; justify-content: center; }
+#md-picker.show { display: flex; }
+#md-picker-inner { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px 24px; min-width: 260px; max-width: 380px; width: 90%; }
+#md-picker-inner h3 { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-dim); margin-bottom: 12px; }
+.md-pick-item { display: block; width: 100%; text-align: left; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 9px 14px; color: var(--text); font-family: inherit; font-size: 0.85rem; cursor: pointer; margin-bottom: 6px; }
+.md-pick-item:hover { border-color: var(--accent); color: var(--accent); }
+.md-pick-cancel { display: block; width: 100%; text-align: center; font-size: 0.75rem; color: var(--muted); background: none; border: none; font-family: inherit; cursor: pointer; padding: 6px; margin-top: 2px; }
+.md-pick-cancel:hover { color: var(--text); }
 </style>
 </head>
 <body>
@@ -231,7 +242,8 @@ footer a { color: var(--blue); text-decoration: none; }
     <button class="theme-btn"        data-theme="ocean" onclick="setTheme('ocean')">Ocean</button>
     <button class="theme-btn"        data-theme="amber" onclick="setTheme('amber')">Amber</button>
     <button class="theme-btn theme-btn-custom" id="custom-theme-btn" data-theme="custom" onclick="setTheme('custom')" style="display:none">Custom</button>
-    <button class="theme-btn" id="load-css-btn" onclick="pickCustomTheme()" title="Load a .css theme file">+ CSS</button>
+    <button class="theme-btn" id="load-css-btn" onclick="pickCustomTheme()" title="Override theme: load a .css file">+ CSS</button>
+    <button class="theme-btn" id="load-favicon-btn" onclick="pickFavicon()" title="Override favicon: load an image file">+ Icon</button>
   </div>
 </div>
 
@@ -294,6 +306,10 @@ footer a { color: var(--blue); text-decoration: none; }
 </div>
 
 <div id="toast"></div>
+
+<div id="md-picker" onclick="hideMdPicker()">
+  <div id="md-picker-inner" onclick="event.stopPropagation()"></div>
+</div>
 
 <script>
 // ── MD Format ──────────────────────────────────────────────────────────────
@@ -402,19 +418,32 @@ function data()   { return BOARDS[ACTIVE].data; }
 async function openBoard() {
   closeTabMenu();
   try {
-    const [fh] = await window.showOpenFilePicker({
-      types: [{ description: "Markdown", accept: { "text/markdown": [".md"] } }],
-      multiple: false
-    });
+    const dirHandle = await window.showDirectoryPicker({ mode: "readwrite" });
+
+    // Scan for .md files in the directory root
+    const mdFiles = [];
+    for await (const [name, handle] of dirHandle) {
+      if (handle.kind === "file" && name.toLowerCase().endsWith(".md")) {
+        mdFiles.push({ name, handle });
+      }
+    }
+    if (mdFiles.length === 0) { toast("No .md files found in this folder"); return; }
+
+    const fh = mdFiles.length === 1 ? mdFiles[0].handle : await showMdPicker(mdFiles);
+    if (!fh) return; // picker cancelled
+
     const file = await fh.getFile();
     const text = await file.text();
     const d = parseMD(text);
-    BOARDS.push({ name: fh.name.replace(/\.md$/i, ""), fileHandle: fh, data: d, unsaved: false });
+    const plugins = await loadPluginsFromDir(dirHandle);
+    BOARDS.push({ name: fh.name.replace(/\.md$/i, ""), fileHandle: fh, dirHandle, data: d, unsaved: false, plugins });
     ACTIVE = BOARDS.length - 1;
     showBoard();
     renderTabs();
     render();
-    toast("Opened · " + fh.name);
+    applyBoardPlugins(board());
+    const hint = plugins.favicon || plugins.css ? " · .mbconfig loaded" : "";
+    toast("Opened · " + fh.name + hint);
   } catch (e) {
     if (e.name !== "AbortError") toast("Error: " + e.message);
   }
@@ -443,7 +472,7 @@ async function newBoard() {
     await w.write(TEMPLATE_MD);
     await w.close();
     const d = parseMD(TEMPLATE_MD);
-    BOARDS.push({ name: fh.name.replace(/\.md$/i, ""), fileHandle: fh, data: d, unsaved: false });
+    BOARDS.push({ name: fh.name.replace(/\.md$/i, ""), fileHandle: fh, dirHandle: null, data: d, unsaved: false, plugins: { favicon: null, css: null } });
     ACTIVE = BOARDS.length - 1;
     showBoard();
     renderTabs();
@@ -523,7 +552,7 @@ function renderTabs() {
 function switchTab(i) {
   ACTIVE = i;
   renderTabs();
-  if (ACTIVE >= 0 && BOARDS[ACTIVE]) { showBoard(); render(); }
+  if (ACTIVE >= 0 && BOARDS[ACTIVE]) { showBoard(); render(); applyBoardPlugins(BOARDS[ACTIVE]); }
   else showConnect();
 }
 
@@ -537,7 +566,7 @@ function closeTab(e, i) {
 }
 
 function showBoard()   { document.getElementById("connect-screen").style.display = "none"; document.getElementById("board").style.display = "block"; }
-function showConnect() { document.getElementById("connect-screen").style.display = ""; document.getElementById("board").style.display = "none"; }
+function showConnect() { document.getElementById("connect-screen").style.display = ""; document.getElementById("board").style.display = "none"; applyBoardPlugins(null); }
 function setSave(t, c) { const el = document.getElementById("save-status"); el.textContent = t; el.className = c; }
 
 // ── Feature / Phase interaction ────────────────────────────────────────────
@@ -766,6 +795,117 @@ function clearCustomTheme() {
   toast("Custom theme cleared");
 }
 
+// ── .mbconfig plugin system ────────────────────────────────────────────────
+async function loadPluginsFromDir(dirHandle) {
+  const plugins = { favicon: null, css: null };
+  try {
+    const cfg = await dirHandle.getDirectoryHandle(".mbconfig");
+
+    // favicon: svg → png → ico → jpg (first found wins)
+    for (const name of ["favicon.svg", "favicon.png", "favicon.ico", "favicon.jpg", "favicon.jpeg"]) {
+      try {
+        const fh = await cfg.getFileHandle(name);
+        const file = await fh.getFile();
+        plugins.favicon = await new Promise((res) => {
+          const r = new FileReader();
+          r.onload = (e) => res(e.target.result);
+          r.readAsDataURL(file);
+        });
+        break;
+      } catch(_) {}
+    }
+
+    // theme.css
+    try {
+      const fh = await cfg.getFileHandle("theme.css");
+      plugins.css = await (await fh.getFile()).text();
+    } catch(_) {}
+  } catch(_) {} // no .mbconfig folder — fine
+
+  return plugins;
+}
+
+function applyBoardPlugins(b) {
+  const p = b ? b.plugins : { favicon: null, css: null };
+  setFavicon(p.favicon || localStorage.getItem("mb-favicon") || DEFAULT_FAVICON);
+  if (p.css) {
+    injectCustomCSS(p.css);
+    setTheme("custom");
+  } else {
+    const globalCSS = localStorage.getItem("mb-custom-css");
+    if (globalCSS) { injectCustomCSS(globalCSS); setTheme("custom"); }
+    else {
+      const el = document.getElementById("mb-custom-theme");
+      if (el) el.textContent = "";
+      setTheme(localStorage.getItem("mb-theme") || "dark");
+    }
+  }
+  syncCustomBtn();
+}
+
+// ── .md file picker (multiple files in directory) ──────────────────────────
+let _mdPickerResolve = null;
+
+function hideMdPicker() {
+  document.getElementById("md-picker").classList.remove("show");
+  if (_mdPickerResolve) { _mdPickerResolve(null); _mdPickerResolve = null; }
+}
+
+function showMdPicker(mdFiles) {
+  return new Promise((resolve) => {
+    _mdPickerResolve = resolve;
+    const inner = document.getElementById("md-picker-inner");
+    inner.innerHTML = "<h3>Select a board</h3>";
+    mdFiles.forEach(({ name, handle }) => {
+      const btn = document.createElement("button");
+      btn.className = "md-pick-item";
+      btn.textContent = name;
+      btn.onclick = () => {
+        document.getElementById("md-picker").classList.remove("show");
+        _mdPickerResolve = null;
+        resolve(handle);
+      };
+      inner.appendChild(btn);
+    });
+    const cancel = document.createElement("button");
+    cancel.className = "md-pick-cancel";
+    cancel.textContent = "Cancel";
+    cancel.onclick = hideMdPicker;
+    inner.appendChild(cancel);
+    document.getElementById("md-picker").classList.add("show");
+  });
+}
+
+// ── Favicon ────────────────────────────────────────────────────────────────
+const DEFAULT_FAVICON = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231a1d27'/%3E%3Crect x='6' y='7' width='20' height='3' rx='1.5' fill='%234ade80'/%3E%3Crect x='6' y='13' width='14' height='3' rx='1.5' fill='%234ade80'/%3E%3Crect x='6' y='19' width='17' height='3' rx='1.5' fill='%236b7280'/%3E%3Crect x='6' y='25' width='11' height='3' rx='1.5' fill='%236b7280'/%3E%3C/svg%3E";
+
+function setFavicon(url) {
+  document.getElementById("mb-favicon").href = url;
+}
+
+async function pickFavicon() {
+  try {
+    const [fh] = await window.showOpenFilePicker({
+      types: [{ description: "Image", accept: { "image/*": [".png", ".svg", ".ico", ".jpg", ".jpeg", ".webp", ".gif"] } }]
+    });
+    const file = await fh.getFile();
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const url = e.target.result;
+      setFavicon(url);
+      localStorage.setItem("mb-favicon", url);
+      toast("Favicon set · " + fh.name);
+    };
+    reader.readAsDataURL(file);
+  } catch(e) { if (e.name !== "AbortError") toast("Error: " + e.message); }
+}
+
+function clearFavicon() {
+  setFavicon(DEFAULT_FAVICON);
+  localStorage.removeItem("mb-favicon");
+  toast("Favicon reset to default");
+}
+
 // ── Utilities ──────────────────────────────────────────────────────────────
 function esc(s) { return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
 
@@ -783,11 +923,7 @@ document.getElementById("notes").addEventListener("input", () => {
 });
 
 // ── Init ───────────────────────────────────────────────────────────────────
-const savedCSS = localStorage.getItem("mb-custom-css");
-if (savedCSS) injectCustomCSS(savedCSS);
-const savedTheme = localStorage.getItem("mb-theme") || "dark";
-setTheme(savedTheme);
-syncCustomBtn();
+applyBoardPlugins(null);
 
 document.addEventListener("click", (e) => {
   if (!e.target.closest("#tab-add")) closeTabMenu();
@@ -797,6 +933,7 @@ if (!window.showOpenFilePicker) {
   document.getElementById("open-btn").disabled = true;
   document.getElementById("new-btn").disabled = true;
   document.getElementById("load-css-btn").style.display = "none";
+  document.getElementById("load-favicon-btn").style.display = "none";
   document.getElementById("api-hint").textContent = "⚠ Requires Chrome or Edge 86+ (File System Access API)";
   document.getElementById("api-hint").style.color = "var(--red)";
 }

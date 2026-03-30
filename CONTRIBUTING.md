@@ -22,11 +22,13 @@ npm run test:all    # Both
 
 ## Making changes
 
-- **CSS**: Lines 7–200 of `index.html`. The four built-in themes use CSS custom properties — update all four theme blocks if adding a new variable. Custom user themes are loaded at runtime via `loadCustomTheme()` and stored in `localStorage`; see the **Custom themes** section in the README.
-- **HTML**: Lines 203–265. Keep it minimal.
-- **JS**: Lines 267–675. No imports, no modules — everything is in the global scope.
+- **CSS**: Lines 8–232 of `index.html`. The four built-in themes use CSS custom properties — update all four theme blocks if adding a new variable. Custom user themes are loaded at runtime via `loadCustomTheme()` and stored in `localStorage`; see the **Custom themes** section in the README.
+- **HTML**: Lines 234–313. Keep it minimal.
+- **JS**: Lines 314–940. No imports, no modules — everything is in the global scope.
 
 If you change `parseMD()` or `serialiseMD()`, make sure the round-trip test in `tests/serialise.test.js` still passes — these two functions must stay in sync.
+
+The plugin system (`loadPluginsFromDir`, `applyBoardPlugins`) is intentionally separate from the board I/O functions — keep plugin loading async and non-blocking. Any new plugin file type should be added to `loadPluginsFromDir` and documented in `README.md` under **Project plugins (.mbconfig)**.
 
 ## Pull request checklist
 
