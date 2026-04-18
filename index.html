@@ -961,11 +961,15 @@ document.addEventListener("keydown", (e) => {
   }
 });
 
-if (!window.showOpenFilePicker) {
-  document.getElementById("open-btn").disabled = true;
-  document.getElementById("new-btn").disabled = true;
-  document.getElementById("load-css-btn").style.display = "none";
-  document.getElementById("load-favicon-btn").style.display = "none";
+if (!window.showDirectoryPicker || !window.showSaveFilePicker || !window.showOpenFilePicker) {
+  if (!window.showSaveFilePicker)
+    document.getElementById("new-btn").disabled = true;
+  if (!window.showDirectoryPicker || !window.showOpenFilePicker)
+    document.getElementById("open-btn").disabled = true;
+  if (!window.showOpenFilePicker) {
+    document.getElementById("load-css-btn").style.display = "none";
+    document.getElementById("load-favicon-btn").style.display = "none";
+  }
   document.getElementById("api-hint").textContent = "⚠ Requires Chrome or Edge 86+ (File System Access API)";
   document.getElementById("api-hint").style.color = "var(--red)";
 }
