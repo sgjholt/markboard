@@ -90,4 +90,37 @@ describe("parseMD", () => {
     expect(d.phases).toEqual([]);
     expect(d.notes).toBe("");
   });
+
+  it("ignores malformed meta entries without an equals sign", () => {
+    const d = parseMD("# T\n\n<!-- meta: version=1.0 badentry updated=2026-01-01 -->\n");
+    expect(d.meta.version).toBe("1.0");
+    expect(d.meta.updated).toBe("2026-01-01");
+    expect(d.meta.badentry).toBeUndefined();
+  });
+
+  it("does not parse a feature with an invalid date format as dueDate", () => {
+    const d = parseMD("# T\n## P | active\n- [ ] Ship [not-a-date]\n");
+    expect(d.phases[0].features[0].dueDate).toBeNull();
+    expect(d.phases[0].features[0].name).toContain("Ship");
+  });
+
+  it("handles a phase with zero features without crashing", () => {
+    const d = parseMD("# T\n\n## Empty Phase | pending\n\n## Phase 2 | active\n- [~] A\n");
+    expect(d.phases).toHaveLength(2);
+    expect(d.phases[0].features).toHaveLength(0);
+    expect(d.phases[0].status).toBe("pending");
+  });
+
+  it("auto-corrects stale phase status on load", () => {
+    // Phase header says 'pending' but all features are done — should be corrected to 'done'
+    const md = "# T\n\n## Phase 1 | pending\n- [x] Feature A\n- [x] Feature B\n";
+    const d = parseMD(md);
+    expect(d.phases[0].status).toBe("done");
+  });
+
+  it("auto-corrects phase to active when some features are done", () => {
+    const md = "# T\n\n## Phase 1 | done\n- [x] Feature A\n- [ ] Feature B\n";
+    const d = parseMD(md);
+    expect(d.phases[0].status).toBe("active");
+  });
 });
