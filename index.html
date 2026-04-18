@@ -253,8 +253,8 @@ footer kbd { font-family: inherit; font-size: 0.68rem; background: var(--surface
 </div>
 
 <div id="tab-menu">
-  <button class="tab-menu-item" onclick="newBoard()">Create new board</button>
-  <button class="tab-menu-item" onclick="openBoard()">Open project folder</button>
+  <button class="tab-menu-item" id="tab-menu-new" onclick="newBoard()">Create new board</button>
+  <button class="tab-menu-item" id="tab-menu-open" onclick="openBoard()">Open project folder</button>
 </div>
 
 <div id="connect-screen">
@@ -962,10 +962,10 @@ document.addEventListener("keydown", (e) => {
 });
 
 if (!window.showDirectoryPicker || !window.showSaveFilePicker || !window.showOpenFilePicker) {
-  if (!window.showSaveFilePicker)
-    document.getElementById("new-btn").disabled = true;
-  if (!window.showDirectoryPicker || !window.showOpenFilePicker)
-    document.getElementById("open-btn").disabled = true;
+  const canNew  = !!window.showSaveFilePicker;
+  const canOpen = !!window.showDirectoryPicker && !!window.showOpenFilePicker;
+  if (!canNew)  { document.getElementById("new-btn").disabled = true;  document.getElementById("tab-menu-new").style.display  = "none"; }
+  if (!canOpen) { document.getElementById("open-btn").disabled = true; document.getElementById("tab-menu-open").style.display = "none"; }
   if (!window.showOpenFilePicker) {
     document.getElementById("load-css-btn").style.display = "none";
     document.getElementById("load-favicon-btn").style.display = "none";
