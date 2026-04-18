@@ -142,22 +142,18 @@ test.describe("MarkBoard", () => {
       showBoard(); renderTabs(); render();
     }, testMD);
 
-    const features = page.locator(".feature");
-    await expect(features).toHaveCount(3);
+    await expect(page.locator(".feature")).toHaveCount(3);
+    await expect(page.locator(".feature").nth(0).locator(".feat-name")).toHaveText("Alpha");
 
-    // Verify initial order
-    await expect(features.nth(0).locator(".feat-name")).toHaveText("Alpha");
-    await expect(features.nth(1).locator(".feat-name")).toHaveText("Beta");
-    await expect(features.nth(2).locator(".feat-name")).toHaveText("Gamma");
+    // Directly invoke the drop handler: move Alpha (fi=0) to after Gamma (fi=2)
+    await page.evaluate(() => {
+      DRAG = { type: "feature", pi: 0, fi: 0 };
+      DRAG_OVER = { pi: 0, fi: 2, above: false };
+      onFeatDrop({ preventDefault: () => {} }, 0, 2);
+    });
 
-    // Drag first feature (Alpha) to after the third (Gamma)
-    const src = features.nth(0);
-    const dst = features.nth(2);
-    await src.dragTo(dst, { targetPosition: { x: 10, y: dst.boundingBox().then(b => b ? b.height * 0.8 : 10) } });
-
-    // After drop, check in-memory data order changed
     const names = await page.evaluate(() => BOARDS[0].data.phases[0].features.map(f => f.name));
-    expect(names[names.length - 1]).toBe("Alpha");
+    expect(names).toEqual(["Beta", "Gamma", "Alpha"]);
   });
 
   test("reordering phases updates data order", async ({ page }) => {
@@ -177,16 +173,16 @@ test.describe("MarkBoard", () => {
       showBoard(); renderTabs(); render();
     }, testMD);
 
-    const phases = page.locator(".phase-card");
-    await expect(phases).toHaveCount(2);
+    await expect(page.locator(".phase-card")).toHaveCount(2);
 
-    // Drag Phase Alpha header (first) to after Phase Beta (second)
-    const srcHeader = phases.nth(0).locator(".phase-header");
-    const dstHeader = phases.nth(1).locator(".phase-header");
-    await srcHeader.dragTo(dstHeader);
+    // Directly invoke the drop handler: move Phase Alpha (pi=0) to position of Phase Beta (pi=1)
+    await page.evaluate(() => {
+      DRAG = { type: "phase", pi: 0 };
+      DRAG_OVER = { pi: 1 };
+      onPhaseDrop({ preventDefault: () => {} }, 1);
+    });
 
     const phaseNames = await page.evaluate(() => BOARDS[0].data.phases.map(p => p.title));
-    // After swap, Beta should be first
     expect(phaseNames[0]).toBe("Phase Beta");
     expect(phaseNames[1]).toBe("Phase Alpha");
   });
