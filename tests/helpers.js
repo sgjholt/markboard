@@ -12,7 +12,7 @@ const scriptSource = scriptMatch[1];
 
 // Stub the minimal browser globals the script expects at parse time
 const sandbox = {
-  window: { showOpenFilePicker: true },
+  window: { showOpenFilePicker: true, addEventListener: () => {} },
   document: {
     getElementById: () => ({
       addEventListener: () => {},
