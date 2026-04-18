@@ -649,9 +649,7 @@ function onPhaseDrop(e, pi) {
   e.preventDefault();
   if (!DRAG || DRAG.type !== "phase" || !DRAG_OVER) return;
   const from = data().phases.splice(DRAG.pi, 1)[0];
-  let to = DRAG_OVER.pi;
-  if (DRAG.pi < to) to--;
-  data().phases.splice(to, 0, from);
+  data().phases.splice(DRAG_OVER.pi, 0, from);
   document.querySelectorAll(".phase-card.drag-over,.phase-card.dragging").forEach(el => el.classList.remove("drag-over","dragging"));
   DRAG = null; DRAG_OVER = null;
   markUnsaved(); render(); saveBoard();
