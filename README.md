@@ -90,6 +90,17 @@ The `<!-- meta: key=value ... -->` comment is optional. Recognised keys:
 
 ---
 
+## Keyboard shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| `Ctrl+S` / `Cmd+S` | Save the active board immediately |
+| `Ctrl+Tab` / `Cmd+Tab` | Switch to the next open board tab |
+| `Ctrl+Shift+Tab` / `Cmd+Shift+Tab` | Switch to the previous open board tab |
+| `Enter` / `Space` | Cycle status on the focused feature (keyboard navigation) |
+
+---
+
 ## Project plugins (.mbconfig)
 
 Place a `.mbconfig/` folder next to your `.md` file. When you open the project folder in MarkBoard, any supported files inside are loaded automatically:

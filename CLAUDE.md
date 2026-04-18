@@ -112,3 +112,10 @@ Free text here.
 - Phase status is auto-derived from feature statuses on every `cycleFeature` call — don't rely on the stored value as ground truth.
 - Due date badges: overdue = red, ≤7 days = amber, future = grey, done = strikethrough.
 - `parseMD` / `serialiseMD` are the authoritative round-trip format — editing either requires verifying both.
+
+## Documentation requirements
+
+Whenever a user-facing feature is added or changed, update **both**:
+
+1. **`README.md`** — add or update the relevant section (Features list, Keyboard shortcuts table, etc.) so external users can discover it.
+2. **In-app hints** — update the footer text in `index.html` and/or add/update `title` attributes on affected controls so the feature is discoverable without leaving the app.
